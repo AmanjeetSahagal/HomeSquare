@@ -1,0 +1,5 @@
+{
+  "name": "AI Real Estate Analyzer",
+  "description": "An application to analyze real estate listings from Zillow and Redfin using an AI backend, allowing users to save and review their analyzed homes.",
+  "requestFramePermissions": []
+}
