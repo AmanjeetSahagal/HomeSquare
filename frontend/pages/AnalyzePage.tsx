@@ -1,5 +1,4 @@
-
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { ListingAnalysis, ListingLabel, SaveListingPayload } from '../types';
 import Spinner from '../components/Spinner';
 const API_BASE = import.meta.env.VITE_API_URL || '';
@@ -78,9 +77,29 @@ const AnalyzePage: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [saveStatus, setSaveStatus] = useState<string>('');
 
+    useEffect(() => {
+        try {
+            const raw = localStorage.getItem('homesquare_last_analysis');
+            if (!raw) return;
+
+            const parsed = JSON.parse(raw) as { url?: string; analysis?: ListingAnalysis };
+            if (parsed.url) {
+                setUrl(parsed.url);
+            }
+            if (parsed.analysis) {
+                setAnalysis(parsed.analysis);
+            }
+        } catch (e) {
+            console.warn('Failed to load persisted analysis from localStorage', e);
+        }
+    }, []);
+
     // Utility to parse string values like "$1,000" or "1,500 sqft" into numbers
-    const parseNumericString = (s: string): number => {
-        return parseInt(s.replace(/[^0-9]/g, ''), 10);
+    const parseNumericString = (s: any): number => {
+        if (s == null) return 0;
+        if (typeof s === 'number') return s;
+        if (typeof s === 'string') return parseInt(s.replace(/[^0-9]/g, ''), 10);
+        return 0;
     };
 
     // Handles the "Analyze Listing" button click
@@ -101,13 +120,22 @@ const AnalyzePage: React.FC = () => {
                 body: JSON.stringify({ url }),
             });
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
             const result = await response.json();
             if (result.status === 'success') {
                 setAnalysis(result.data);
+
+                // Persist last successful analysis + URL so the page survives navigation
+                try {
+                    localStorage.setItem(
+                        'homesquare_last_analysis',
+                        JSON.stringify({
+                            url,
+                            analysis: result.data,
+                        })
+                    );
+                } catch (e) {
+                    console.warn('Failed to persist analysis to localStorage', e);
+                }
             } else {
                 throw new Error(result.message || 'Failed to get analysis.');
             }
@@ -120,9 +148,13 @@ const AnalyzePage: React.FC = () => {
     
     // Handles saving the current analysis to the backend
     const handleSave = useCallback(async () => {
-        if (!analysis) return;
+        if (!analysis) {
+            console.warn('handleSave called with no analysis');
+            return;
+        }
+
         setSaveStatus('');
-        
+
         // Transform the analysis data to match the backend's expected format
         const payload: SaveListingPayload = {
             address: analysis.Address,
@@ -133,24 +165,42 @@ const AnalyzePage: React.FC = () => {
             estimated_price: parseNumericString(analysis['Estimated Price']),
             label: analysis.Label,
             confidence: analysis.Confidence,
-            url: analysis.URL,
+            url: analysis.URL || url,
         };
 
+        console.log('HANDLE_SAVE CALLED, payload =', payload, 'API_BASE =', API_BASE);
+
         try {
-            const response = await fetch('/api/save_listing', {
+            const response = await fetch(`${API_BASE}/api/saved_listings`, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
                 body: JSON.stringify(payload),
             });
 
             if (!response.ok) {
-                throw new Error('Failed to save listing.');
+                let msg = 'Failed to save listing.';
+                try {
+                    const errJson = await response.json();
+                    if (errJson && errJson.error) {
+                        msg = errJson.error;
+                    }
+                } catch {
+                    // ignore JSON parsing errors
+                }
+                throw new Error(msg);
             }
+
+            const saved = await response.json();
+            console.log('SAVE RESPONSE =', saved);
             setSaveStatus('Listing Saved!');
         } catch (err) {
-             setSaveStatus(err instanceof Error ? `Error: ${err.message}` : 'Save failed.');
+            console.error('SAVE ERROR =', err);
+            setSaveStatus(err instanceof Error ? `Error: ${err.message}` : 'Save failed.');
         }
-    }, [analysis]);
+    }, [analysis, url]);
 
     return (
         <div className="max-w-4xl mx-auto">
