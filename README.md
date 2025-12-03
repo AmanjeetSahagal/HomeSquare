@@ -1,5 +1,3 @@
-
-
 # 🏡 HomeSquare
 ### AI-Powered Real Estate Deal Analyzer
 
@@ -116,6 +114,8 @@ HomeSquare/
 │   │   ├── inference.py
 │   ├── models/
 │   ├── data/
+│   ├── database/        # ← SQLite DB lives here
+│   │   └── homesquare.db
 │   └── test_request.py
 │
 └── frontend/
