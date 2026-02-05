@@ -11,21 +11,15 @@ This project combines **web scraping**, **data analysis**, and **machine learnin
 
 ### 🔍 Real-Time Listing Analysis
 - Scrapes live property data from **Zillow** and **Redfin**
-- Extracts beds, baths, sqft, price, HOA, location, and structured hidden state
-- Computes local comparable sales (comps) for the same ZIP code
-- Uses ≥1 year of sold listings to estimate median $/sqft
+- Extracts beds, baths, sqft, price, address, and listing URL
+- Computes local comparable sales (comps) for the same ZIP code (Redfin)
+- Uses recent sold listings to estimate median $/sqft
 
-### 🤖 Machine Learning Core
-- Trains a supervised ML model using:
-  - Your scraped comps
-  - External Kaggle datasets
-- Scikit-learn pipeline with:
-  - Numeric + categorical encoding
-  - Feature scaling
-  - Gradient-boosted regression
-- Optional prediction intervals and confidence estimates
-- Blends model output with comp-based medians for stability
+### 🤖 Valuation Core (Baseline)
+- Computes a blended median $/sqft from comps
+- Applies light bedroom/bath adjustments
 - Uses a **tight ±$10,000 band** for Deal / Fair / Dud classification
+- Confidence grows with comp count and distance outside the band
 
 ### ⚙️ Backend API (Flask)
 - `/api/analyze_ai` endpoint processes listing URLs
@@ -106,26 +100,18 @@ HomeSquare/
 │   ├── app/
 │   │   ├── routes/
 │   │   ├── ai_core.py
-│   │   ├── ...
-│   ├── ml/
-│   │   ├── schema.py
-│   │   ├── features.py
-│   │   ├── train.py
-│   │   ├── inference.py
-│   ├── models/
-│   ├── data/
+│   │   ├── scraper.py
+│   │   └── ...
 │   ├── database/        # ← SQLite DB lives here
 │   │   └── homesquare.db
 │   └── test_request.py
 │
 └── frontend/
-    ├── src/
-    │   ├── pages/
-    │   ├── components/
-    │   └── ...
-    ├── public/
+    ├── pages/
+    ├── components/
     ├── index.html
-    └── vite.config.ts
+    ├── index.tsx
+    └── App.tsx
 ```
 
 ---
@@ -152,24 +138,11 @@ Frontend:
 VITE_API_URL=http://localhost:5050
 ```
 
-Backend:
-```
-CHROME_DRIVER_PATH=...
-DEBUG_SELENIUM=1
-```
-
 ---
 
 ## 📈 Training Your Own Model
-```bash
-cd backend/app/ml
-python train.py --kaggle data/kaggle.csv --scraped data/scraped.csv
-```
-
-Output saved to:
-```
-backend/app/models/price_pipe.joblib
-```
+This repo currently uses a baseline comp-driven estimator in `backend/app/ai_core.py`.
+If you add a separate ML pipeline, document it here.
 
 ---
 

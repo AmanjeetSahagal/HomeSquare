@@ -46,6 +46,17 @@ def build_features(listing: Listing, comps_df: pd.DataFrame, external_stats: Opt
         if col in comps_df.columns:
             comps_df[col] = pd.to_numeric(comps_df[col], errors="coerce")
     comps_df = comps_df.dropna(subset=["price", "sqft"])
+    if comps_df.empty:
+        return {
+            "avg_ppsqft": float("nan"),
+            "ppsqft_iqr": float("nan"),
+            "beds_med": float("nan"),
+            "baths_med": float("nan"),
+            "sqft_med": float("nan"),
+            "n_comps": 0,
+            "avg_ppsqft_external": None,
+            "blended_ppsqft": float("nan"),
+        }
 
     avg_ppsqft = float(np.median(comps_df["price"] / comps_df["sqft"]))
     ppsqft_iqr = float(np.subtract(*np.percentile(comps_df["price"]/comps_df["sqft"], [75, 25])))

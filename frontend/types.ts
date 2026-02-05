@@ -17,7 +17,18 @@ export interface ListingAnalysis {
     Label: ListingLabel;
     Confidence: number;
     Explanation: string;
-    URL: string;
+    URL?: string;
+    'Percent Difference'?: number;
+    CompsUsed?: number;
+    CompsPreview?: Array<{
+        price?: number;
+        beds?: number;
+        baths?: number;
+        sqft?: number;
+        address?: string;
+        detail_url?: string;
+        note?: string;
+    }>;
 }
 
 // Interface for the payload sent to the /api/save_listing endpoint

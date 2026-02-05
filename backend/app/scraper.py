@@ -296,7 +296,8 @@ def get_redfin_estimate(driver, timeout=10):
     return int(raw.replace("$", "").replace(",", ""))
 
 
-def get_average_price_redfin(zip_code, beds, baths, sqft, tol=0.2):
+def get_comps_redfin(zip_code, beds, baths, sqft, tol=0.2, limit=25):
+    """Fetch multiple sold comps from Redfin search results."""
     driver = _build_driver()
     try:
         min_beds, max_beds = max(0, beds - 1), beds + 1
@@ -317,15 +318,79 @@ def get_average_price_redfin(zip_code, beds, baths, sqft, tol=0.2):
         time.sleep(2)
 
         soup = BeautifulSoup(driver.page_source, "html.parser")
-        prices = []
-        for tag in soup.select("span.bp-Homecard__Price--value"):
+        comps = []
+
+        # Redfin homecard parsing (best-effort; markup changes frequently)
+        cards = soup.select("div.HomeCardContainer, div.HomeCard") or []
+        for card in cards:
+            if len(comps) >= limit:
+                break
+            price_tag = card.select_one("span.bp-Homecard__Price--value, span.homecardV2Price, span.price")
+            if not price_tag:
+                continue
             try:
-                val = int(tag.get_text(strip=True).replace("$", "").replace(",", ""))
-                prices.append(val)
+                price = int(price_tag.get_text(strip=True).replace("$", "").replace(",", ""))
             except Exception:
                 continue
-        if not prices:
-            return None
-        return round(mean(prices))
+
+            beds_tag = card.select_one("[data-rf-test-id='homecard-beds'], .stats .statsValue")
+            baths_tag = card.select_one("[data-rf-test-id='homecard-baths']")
+            sqft_tag = card.select_one("[data-rf-test-id='homecard-sqft'], [data-rf-test-id='homecard-sqFt']")
+
+            def _num(tag):
+                if not tag:
+                    return None
+                try:
+                    return float(re.sub(r"[^0-9.]", "", tag.get_text(strip=True)))
+                except Exception:
+                    return None
+
+            beds_v = _num(beds_tag)
+            baths_v = _num(baths_tag)
+            sqft_v = _num(sqft_tag)
+
+            # Fallback: parse stats from card text if sqft/beds/baths missing
+            if beds_v is None or baths_v is None or sqft_v is None:
+                card_text = card.get_text(" ", strip=True).lower()
+                if beds_v is None:
+                    m = re.search(r"(\d+(?:\.\d+)?)\s*bed", card_text)
+                    if m:
+                        beds_v = float(m.group(1))
+                if baths_v is None:
+                    m = re.search(r"(\d+(?:\.\d+)?)\s*bath", card_text)
+                    if m:
+                        baths_v = float(m.group(1))
+                if sqft_v is None:
+                    m = re.search(r"([\d,]+)\s*sq\s*ft", card_text)
+                    if m:
+                        try:
+                            sqft_v = float(m.group(1).replace(",", ""))
+                        except Exception:
+                            sqft_v = None
+
+            addr_tag = card.select_one("div.address, .homecardV2Address, [data-rf-test-id='homecard-address']")
+            addr = addr_tag.get_text(strip=True) if addr_tag else None
+
+            link_tag = card.select_one("a.link")
+            detail_url = urljoin("https://www.redfin.com", link_tag.get("href")) if link_tag and link_tag.get("href") else None
+
+            comps.append({
+                "price": price,
+                "beds": beds_v,
+                "baths": baths_v,
+                "sqft": sqft_v,
+                "address": addr,
+                "detail_url": detail_url,
+            })
+
+        return comps
     finally:
         driver.quit()
+
+
+def get_average_price_redfin(zip_code, beds, baths, sqft, tol=0.2):
+    comps = get_comps_redfin(zip_code, beds, baths, sqft, tol=tol)
+    prices = [c["price"] for c in comps if isinstance(c.get("price"), (int, float))]
+    if not prices:
+        return None
+    return round(mean(prices))

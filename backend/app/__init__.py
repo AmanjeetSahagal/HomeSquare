@@ -8,10 +8,6 @@ def create_app():
     # Allow frontend to call Flask API
     CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-    # Register core routes
-    from .routes.routes_main import main
-    app.register_blueprint(main, url_prefix="/api")
-
     # Register AI routes
     from .routes.routes_ai import ai
     app.register_blueprint(ai, url_prefix="/api")
