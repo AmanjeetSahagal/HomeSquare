@@ -14,6 +14,9 @@ export interface ListingAnalysis {
     Baths: number;
     'Square Footage': string;
     'Estimated Price': string;
+    'ML Estimated Price'?: number;
+    'ML Interval Low'?: number;
+    'ML Interval High'?: number;
     Label: ListingLabel;
     Confidence: number;
     Explanation: string;

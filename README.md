@@ -15,9 +15,10 @@ This project combines **web scraping**, **data analysis**, and **machine learnin
 - Computes local comparable sales (comps) for the same ZIP code (Redfin)
 - Uses recent sold listings to estimate median $/sqft
 
-### 🤖 Valuation Core (Baseline)
-- Computes a blended median $/sqft from comps
-- Applies light bedroom/bath adjustments
+### 🤖 Valuation Core (Baseline + ML)
+- Baseline: blended median $/sqft from comps with light bed/bath adjustments
+- ML: **CatBoost quantile regression** for median + prediction intervals
+- Blends comps + ML median based on comp count
 - Uses a **tight ±$10,000 band** for Deal / Fair / Dud classification
 - Confidence grows with comp count and distance outside the band
 
@@ -44,8 +45,8 @@ This project combines **web scraping**, **data analysis**, and **machine learnin
 | **Frontend** | React, TypeScript, Vite |
 | **Backend** | Python, Flask, Pandas, NumPy |
 | **Scraping** | Selenium, BeautifulSoup |
-| **ML** | scikit-learn, joblib, Pydantic |
-| **Storage** | CSV datasets, cached comp results |
+| **ML** | CatBoost, scikit-learn, joblib |
+| **Storage** | SQLite, CSV datasets |
 | **Deployment** | Render / Railway / EC2 |
 
 ---
@@ -69,12 +70,10 @@ Backend computes:
 - IQR dispersion
 - Median beds/baths/sqft in area
 - Comps count
-- External Kaggle priors (ZIP-level $/sqft)
-- Blended model features
+- Engineered numeric features (ratios, logs)
 
 ### 4️⃣ Machine Learning inference
-Price model predicts expected fair price.
-Optional: quantile models produce prediction intervals.
+CatBoost quantile models predict median price and intervals (P10/P50/P90).
 
 ### 5️⃣ Deal / Fair / Dud
 Rules:
@@ -89,7 +88,7 @@ Rules:
 - Color-coded label
 - Explanation text
 - Comps preview
-- Raw model features
+- ML interval (when available)
 
 ---
 
@@ -141,8 +140,32 @@ VITE_API_URL=http://localhost:5050
 ---
 
 ## 📈 Training Your Own Model
-This repo currently uses a baseline comp-driven estimator in `backend/app/ai_core.py`.
-If you add a separate ML pipeline, document it here.
+
+### Single model (all data or filtered)
+```bash
+source backend/.venv/bin/activate
+python -m backend.app.ml.train \
+  --data backend/data/realtor-data.zip.csv \
+  --model-dir backend/app/models/price_model \
+  --price-min 10000 \
+  --price-max 5000000 \
+  --sqft-min 300 \
+  --sqft-max 10000
+```
+
+### Per‑state models (recommended for accuracy)
+```bash
+python -m backend.app.ml.train \
+  --data backend/data/realtor-data.zip.csv \
+  --model-dir backend/app/models/price_model \
+  --by-state \
+  --price-min 10000 \
+  --price-max 5000000 \
+  --sqft-min 300 \
+  --sqft-max 10000
+```
+
+The API automatically selects a state model if the listing state can be parsed.
 
 ---
 

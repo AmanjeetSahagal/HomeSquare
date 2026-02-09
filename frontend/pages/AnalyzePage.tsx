@@ -39,6 +39,14 @@ const ListingResultCard: React.FC<{
                 <div>
                     <p className="text-sm text-gray-500 dark:text-gray-400">AI Estimated Price</p>
                     <p className="text-2xl font-semibold text-gray-700 dark:text-gray-300">{analysis['Estimated Price']}</p>
+                    {analysis['ML Estimated Price'] != null && (
+                        <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                            ML median ≈ ${Math.round(analysis['ML Estimated Price']).toLocaleString()}
+                            {analysis['ML Interval Low'] != null && analysis['ML Interval High'] != null
+                                ? ` ( ${Math.round(analysis['ML Interval Low']).toLocaleString()}–${Math.round(analysis['ML Interval High']).toLocaleString()} )`
+                                : ''}
+                        </p>
+                    )}
                 </div>
             </div>
             <div className="grid grid-cols-3 gap-4 mt-4 text-center border-t border-b border-gray-200 dark:border-gray-700 py-3">

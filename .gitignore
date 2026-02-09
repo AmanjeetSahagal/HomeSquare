@@ -3,3 +3,17 @@
 *.sqlite
 *.sqlite3
 database/
+
+# Python / virtualenv
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# ML artifacts
+catboost_info/
+backend/app/models/
+
+# Data (Kaggle and local datasets)
+backend/data/
+data/

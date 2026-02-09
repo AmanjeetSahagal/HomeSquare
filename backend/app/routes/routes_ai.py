@@ -10,6 +10,7 @@ from ..ai_core import (
     explanation_text,
 )
 from ..scraper import scrape_listing, get_average_price_redfin, get_comps_redfin
+from ..ml.inference import load_price_model_for_state
 
 ai = Blueprint("ai", __name__)
 
@@ -31,6 +32,16 @@ def _zip_from_url(url: str):
     """Extract ZIP code from URL (Redfin/Zillow usually include it)."""
     m = re.search(r"(\d{5})(?:[-/]|$)", url or "")
     return m.group(1) if m else None
+
+
+def _city_state_from_address(address: str):
+    """Best-effort parse of 'City, ST' from an address string."""
+    if not address:
+        return None, None
+    m = re.search(r",\s*([^,]+),\s*([A-Z]{2})\b", address)
+    if not m:
+        return None, None
+    return m.group(1).strip(), m.group(2).strip()
 
 
 @ai.post("/analyze_ai")
@@ -125,6 +136,7 @@ def analyze_ai():
     baths = _to_float(listing_data.get("Baths"))
     sqft = _to_float(listing_data.get("Square Footage"))
     zip_code = _zip_from_url(url)
+    city, state = _city_state_from_address(listing_data.get("Address"))
 
     # Build a listing object for analysis
     listing = Listing(
@@ -142,10 +154,54 @@ def analyze_ai():
     if feats.get("n_comps", 0) == 0:
         return jsonify({"status": "error", "error": "No valid comps available to estimate price."}), 404
     est_price = estimate_price_baseline(listing, feats)
+
+    # ML inference (optional)
+    ml_est = None
+    ml_low = None
+    ml_high = None
+    model = load_price_model_for_state(state)
+    if model is not None:
+        listing_features = {
+            "bed": beds,
+            "bath": baths,
+            "house_size": sqft,
+            "acre_lot": None,
+            "zip_code": zip_code,
+            "city": city,
+            "state": state,
+            "street": listing_data.get("Address"),
+            "status": None,
+            "brokered_by": None,
+            "prev_sold_date": None,
+        }
+        try:
+            preds = model.predict(listing_features)
+            if preds:
+                ml_low = preds["p10"]
+                ml_est = preds["p50"]
+                ml_high = preds["p90"]
+        except Exception:
+            ml_est = None
+
+    # Blend baseline + ML median if available
+    if ml_est is not None and est_price == est_price:
+        n_comps = feats.get("n_comps", 0)
+        if n_comps >= 5:
+            est_price = 0.7 * est_price + 0.3 * ml_est
+        elif n_comps >= 3:
+            est_price = 0.6 * est_price + 0.4 * ml_est
+        else:
+            est_price = 0.4 * est_price + 0.6 * ml_est
+    elif ml_est is not None and (est_price != est_price):
+        est_price = ml_est
     label, confidence, pct_diff = label_deal(
         list_price, est_price, feats["n_comps"]
     )
     explanation = explanation_text(listing, est_price, label, pct_diff, feats)
+    if ml_est is not None:
+        explanation += f" ML median estimate ≈ ${ml_est:,.0f}."
+        if ml_low is not None and ml_high is not None:
+            explanation += f" Interval: ${ml_low:,.0f}–${ml_high:,.0f}."
 
     # Step 4 — Build small preview of comps (safe columns)
     preview_cols = [c for c in ["price", "beds", "baths", "sqft", "address", "detail_url"] if c in comps_df.columns]
@@ -173,6 +229,9 @@ def analyze_ai():
             "Baths": baths,
             "Square Footage": sqft,
             "Estimated Price": est_out,
+            "ML Estimated Price": None if ml_est is None else round(float(ml_est), 2),
+            "ML Interval Low": None if ml_low is None else round(float(ml_low), 2),
+            "ML Interval High": None if ml_high is None else round(float(ml_high), 2),
             "Label": label,
             "Confidence": round(float(confidence), 3),
             "Percent Difference": pct_out,
