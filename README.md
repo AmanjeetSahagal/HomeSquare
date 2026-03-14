@@ -1,4 +1,4 @@
-# 🏡 HomeSquare
+# HomeSquare
 ### AI-Powered Real Estate Deal Analyzer
 
 HomeSquare is an end-to-end AI system that evaluates real-estate listings and determines whether a property is a **deal**, **fair-priced**, or a **dud** based on comparable sales, machine-learned price models, and real-time scraped listing data.
@@ -7,22 +7,22 @@ This project combines **web scraping**, **data analysis**, and **machine learnin
 
 ---
 
-## 🚀 Features
+## Features
 
-### 🔍 Real-Time Listing Analysis
+### Real-Time Listing Analysis
 - Scrapes live property data from **Zillow** and **Redfin**
 - Extracts beds, baths, sqft, price, address, and listing URL
 - Computes local comparable sales (comps) for the same ZIP code (Redfin)
 - Uses recent sold listings to estimate median $/sqft
 
-### 🤖 Valuation Core (Baseline + ML)
+### Valuation Core (Baseline + ML)
 - Baseline: blended median $/sqft from comps with light bed/bath adjustments
 - ML: **CatBoost quantile regression** for median + prediction intervals
 - Blends comps + ML median based on comp count
-- Uses a **tight ±$10,000 band** for Deal / Fair / Dud classification
+- Uses a tight +/-$10,000 band for Deal / Fair / Dud classification
 - Confidence grows with comp count and distance outside the band
 
-### ⚙️ Backend API (Flask)
+### Backend API (Flask)
 - `/api/analyze_ai` endpoint processes listing URLs
 - Merges scraped results + ML estimates
 - Returns:
@@ -32,14 +32,14 @@ This project combines **web scraping**, **data analysis**, and **machine learnin
   - Explanation text
   - Raw model features
 
-### 💻 Frontend (React + Vite + TypeScript)
+### Frontend (React + Vite + TypeScript)
 - Clean UI for pasting URLs and viewing results
 - Component-based design
 - Smooth fetch to backend using `VITE_API_URL`
 - Displays price estimate, % difference, comps, and reasoning
 - Dark mode compatible
 
-### 🗃 Tech Stack
+### Tech Stack
 | Layer | Tech |
 |-------|------|
 | **Frontend** | React, TypeScript, Vite |
@@ -51,12 +51,12 @@ This project combines **web scraping**, **data analysis**, and **machine learnin
 
 ---
 
-## 🧠 How It Works
+## How It Works
 
-### 1️⃣ User submits a listing URL
+### 1. User submits a listing URL
 Frontend sends the URL to the backend via `/api/analyze_ai`.
 
-### 2️⃣ Backend scrapes Zillow/Redfin
+### 2. Backend scrapes Zillow/Redfin
 Extracts:
 - Price
 - Beds/Baths/Sqft
@@ -64,7 +64,7 @@ Extracts:
 - Hidden JSON state
 - Similar homes for comp metrics
 
-### 3️⃣ Build feature set
+### 3. Build feature set
 Backend computes:
 - Median price per sqft
 - IQR dispersion
@@ -72,16 +72,16 @@ Backend computes:
 - Comps count
 - Engineered numeric features (ratios, logs)
 
-### 4️⃣ Machine Learning inference
+### 4. Machine Learning inference
 CatBoost quantile models predict median price and intervals (P10/P50/P90).
 
-### 5️⃣ Deal / Fair / Dud
+### 5. Deal / Fair / Dud
 Rules:
-- Within $10k → **fair**
-- $10k above → **dud**
-- $10k below → **deal**
+- Within $10k -> **fair**
+- $10k above -> **dud**
+- $10k below -> **deal**
 
-### 6️⃣ Frontend displays full analysis
+### 6. Frontend displays full analysis
 - Estimated fair price
 - Confidence
 - % difference
@@ -92,30 +92,30 @@ Rules:
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 ```
 HomeSquare/
-├── backend/
-│   ├── app/
-│   │   ├── routes/
-│   │   ├── ai_core.py
-│   │   ├── scraper.py
-│   │   └── ...
-│   ├── database/        # ← SQLite DB lives here
-│   │   └── homesquare.db
-│   └── test_request.py
-│
-└── frontend/
-    ├── pages/
-    ├── components/
-    ├── index.html
-    ├── index.tsx
-    └── App.tsx
+|-- backend/
+|   |-- app/
+|   |   |-- routes/
+|   |   |-- ai_core.py
+|   |   |-- scraper.py
+|   |   `-- ...
+|   |-- database/        # SQLite DB lives here
+|   |   `-- homesquare.db
+|   `-- test_request.py
+|
+`-- frontend/
+    |-- pages/
+    |-- components/
+    |-- index.html
+    |-- index.tsx
+    `-- App.tsx
 ```
 
 ---
 
-## 🛠 Local Development
+## Local Development
 
 ### Backend
 ```bash
@@ -139,7 +139,7 @@ VITE_API_URL=http://localhost:5050
 
 ---
 
-## 📈 Training Your Own Model
+## Training Your Own Model
 
 ### Single model (all data or filtered)
 ```bash
@@ -153,7 +153,7 @@ python -m backend.app.ml.train \
   --sqft-max 10000
 ```
 
-### Per‑state models (recommended for accuracy)
+### Per-state models (recommended for accuracy)
 ```bash
 python -m backend.app.ml.train \
   --data backend/data/realtor-data.zip.csv \
@@ -169,19 +169,19 @@ The API automatically selects a state model if the listing state can be parsed.
 
 ---
 
-## 🧪 Example Output
+## Example Output
 ```
-Estimated fair price ≈ $846,780
-List price is -5.5% vs estimate → FAIR
+Estimated fair price ~= $846,780
+List price is -5.5% vs estimate -> FAIR
 Confidence: 0.52
 Comps Used: 1
-Median $/sqft ≈ $213
+Median $/sqft ~= $213
 ```
 
 ---
 
-## 🧭 Future Improvements
-- Switch Selenium → Playwright
+## Future Improvements
+- Switch Selenium -> Playwright
 - Add historical tracking + price alerts
 - Add mapping UI for comps
 - Use LightGBM for quantile intervals
@@ -189,7 +189,7 @@ Median $/sqft ≈ $213
 
 ---
 
-## 🙌 Author
+## Author
 **Amanjeet Sahagal**
 
-AI Engineering • Full-Stack Development • Real Estate Analytics
+AI Engineering | Full-Stack Development | Real Estate Analytics
